@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>健康追踪</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #faf9f7; color: #2c2c2a;
+    font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { min-height: 100vh; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0)); }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(250, 249, 247, 0.92);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    padding: 12px 16px 10px;
+    padding-top: calc(12px + env(safe-area-inset-top, 0));
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .topbar h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: -0.2px; }
+  .topbar .date-mini { font-size: 12px; color: #888780; }
+  .container { padding: 14px 16px; }
+
+  .panel { display: none; animation: fadein 0.18s ease; }
+  .panel.active { display: block; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .card { background: #fff; border: 1px solid #eceae3; border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #2c2c2a; margin-bottom: 12px; letter-spacing: -0.1px; }
+
+  .collapsible-head { display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .collapsible-head .arrow { font-size: 11px; color: #888780; transition: transform 0.2s; }
+  .collapsible.open .collapsible-head .arrow { transform: rotate(180deg); }
+  .collapsible-body { display: none; margin-top: 12px; }
+  .collapsible.open .collapsible-body { display: block; }
+  .preview-row {
+    margin-top: 10px; padding: 10px 12px;
+    background: #f9f7f1; border-radius: 10px;
+    font-size: 12px; color: #5f5e5a;
+  }
+  .preview-row .preview-label { color: #888780; margin-right: 6px; }
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-label { display: block; font-size: 12px; color: #5f5e5a; margin-bottom: 6px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  input[type=text], input[type=number], input[type=date], input[type=time], select, textarea {
+    width: 100%; padding: 10px 12px; font-size: 15px;
+    border: 1px solid #e0ddd3; border-radius: 10px;
+    background: #fff; color: #2c2c2a;
+    font-family: inherit; appearance: none; -webkit-appearance: none;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: #378ADD; }
+  textarea { resize: vertical; min-height: 56px; }
+
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 7px 12px; font-size: 13px;
+    border: 1px solid #e0ddd3; border-radius: 999px;
+    background: #fff; color: #2c2c2a;
+    cursor: pointer; font-family: inherit;
+    user-select: none; -webkit-user-select: none;
+  }
+  .chip:active { background: #f1efe8; }
+  .chip.selected { background: #E6F1FB; color: #0C447C; border-color: #378ADD; font-weight: 500; }
+
+  .sub-options { margin-top: 10px; padding: 10px 12px; background: #f9f7f1; border-radius: 10px; }
+  .sub-options-label { font-size: 12px; color: #5f5e5a; margin-bottom: 8px; }
+
+  .drug-list { margin-top: 8px; }
+  .drug-row { display: grid; grid-template-columns: 2fr 1fr 32px; gap: 6px; margin-bottom: 6px; align-items: center; }
+  .drug-row input { padding: 8px 10px; font-size: 14px; }
+  .drug-del { width: 32px; height: 32px; background: transparent; border: 1px solid #e0ddd3; border-radius: 8px; color: #A32D2D; cursor: pointer; font-size: 14px; padding: 0; }
+  .drug-add {
+    width: 100%; padding: 8px; font-size: 13px;
+    background: #fff; border: 1px dashed #c8c5b8; border-radius: 8px;
+    color: #5f5e5a; cursor: pointer; font-family: inherit; margin-top: 4px;
+  }
+  .drug-add:active { background: #f1efe8; }
+
+  .btn-primary { width: 100%; padding: 12px; font-size: 15px; font-weight: 600; background: #1d9e75; color: #fff; border: none; border-radius: 12px; cursor: pointer; font-family: inherit; }
+  .btn-primary:active { background: #18815f; }
+  .btn-secondary { padding: 8px 14px; font-size: 13px; background: #fff; color: #2c2c2a; border: 1px solid #e0ddd3; border-radius: 10px; cursor: pointer; font-family: inherit; }
+  .btn-secondary:active { background: #f1efe8; }
+  .btn-cancel { width: 100%; padding: 10px; font-size: 13px; background: #fff; color: #5f5e5a; border: 1px solid #e0ddd3; border-radius: 10px; cursor: pointer; font-family: inherit; margin-top: 8px; }
+  .btn-danger { padding: 8px 14px; font-size: 13px; background: transparent; color: #A32D2D; border: 1px solid #e0ddd3; border-radius: 10px; cursor: pointer; font-family: inherit; }
+  .icon-btn { width: 28px; height: 28px; padding: 0; font-size: 13px; background: transparent; border: 1px solid #e0ddd3; border-radius: 8px; cursor: pointer; color: #888780; display: inline-flex; align-items: center; justify-content: center; }
+  .icon-btn:active { background: #f1efe8; }
+  .icon-btn.edit { color: #378ADD; }
+
+  .edit-banner {
+    background: #FFF8E1; border: 1px solid #F0D78A;
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
+    font-size: 13px; color: #6B4F00;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .edit-banner button {
+    background: transparent; border: 1px solid #C9A864; color: #6B4F00;
+    padding: 4px 10px; font-size: 12px; border-radius: 6px;
+    cursor: pointer; font-family: inherit;
+  }
+
+  .switch-bar { display: flex; gap: 4px; background: #f1efe8; padding: 4px; border-radius: 12px; margin-bottom: 14px; }
+  .switch-btn { flex: 1; padding: 9px; font-size: 14px; background: transparent; border: none; border-radius: 9px; color: #5f5e5a; cursor: pointer; font-family: inherit; font-weight: 500; }
+  .switch-btn.active { background: #fff; color: #2c2c2a; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+  .water-tracker { background: linear-gradient(135deg, #f4faff 0%, #eef6fd 100%); border: 1px solid #d8e8f5; border-radius: 12px; padding: 14px; }
+  .water-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .water-total { font-size: 18px; font-weight: 600; color: #0C447C; }
+  .water-total .unit { font-size: 12px; font-weight: 400; color: #5f7da5; margin-left: 2px; }
+  .water-target { font-size: 11px; color: #5f7da5; }
+  .water-progress-text { font-size: 11px; color: #5f7da5; margin-bottom: 10px; }
+  .water-cups { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .cup { width: 36px; height: 44px; cursor: pointer; position: relative; transition: transform 0.1s; user-select: none; -webkit-user-select: none; }
+  .cup:active { transform: scale(0.92); }
+  .cup svg { width: 100%; height: 100%; display: block; }
+  .water-actions { display: flex; gap: 8px; }
+  .water-actions button { flex: 1; padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid #d8e8f5; background: #fff; color: #0C447C; cursor: pointer; font-family: inherit; font-weight: 500; }
+  .water-actions button:active { background: #eef6fd; }
+  .water-hint { font-size: 11px; color: #5f7da5; text-align: center; margin-top: 4px; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .stat-card { background: #fff; border: 1px solid #eceae3; border-radius: 12px; padding: 12px; }
+  .stat-label { font-size: 11px; color: #888780; }
+  .stat-val { font-size: 18px; font-weight: 600; margin-top: 4px; letter-spacing: -0.3px; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #5f5e5a; margin-bottom: 12px; }
+  .legend-item { display: inline-flex; align-items: center; gap: 4px; }
+  .legend-mark { display: inline-block; width: 12px; height: 12px; flex-shrink: 0; }
+  .legend-mark.period { background: #D4537E; border-radius: 50%; }
+  .legend-mark.throat { background: #F4823C; border-radius: 2px; }
+  .legend-mark.illness { width: 0; height: 0; background: transparent; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 11px solid #E8B500; }
+  .timeline-month { margin-bottom: 12px; }
+  .timeline-month-label { font-size: 11px; color: #888780; margin-bottom: 6px; }
+  .timeline-row { display: flex; gap: 3px; flex-wrap: wrap; }
+  .day-cell { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; }
+  .day-bg { width: 14px; height: 14px; background: #eceae3; border-radius: 2px; }
+  .day-mark { position: absolute; }
+  .mark-period { width: 12px; height: 12px; border-radius: 50%; background: #D4537E; }
+  .mark-throat { width: 12px; height: 12px; border-radius: 2px; background: #F4823C; }
+  .mark-illness { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 12px solid #E8B500; }
+  .day-cell.multi::after { content: ''; position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff; border: 1px solid #2c2c2a; right: 1px; bottom: 1px; }
+
+  .record-list { background: #fff; border: 1px solid #eceae3; border-radius: 12px; overflow: hidden; }
+  .record-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 14px; border-bottom: 1px solid #f1efe8; gap: 8px; }
+  .record-row:last-child { border-bottom: none; }
+  .record-content { flex: 1; min-width: 0; }
+  .record-date { font-size: 11px; color: #888780; margin-bottom: 4px; }
+  .record-body { font-size: 13px; word-break: break-all; }
+  .record-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .badge { display: inline-block; padding: 2px 7px; font-size: 10px; border-radius: 5px; margin-right: 5px; font-weight: 500; vertical-align: middle; }
+  .b-throat { background: #FFE4D1; color: #8B3D0A; }
+  .b-illness { background: #FFF5C2; color: #6B5500; }
+  .b-habit { background: #E6F1FB; color: #0C447C; }
+  .b-period { background: #FBEAF0; color: #72243E; }
+  .b-abx { background: #FCEBEB; color: #791F1F; }
+
+  .insight { background: #fff; border: 1px solid #eceae3; border-radius: 12px; padding: 12px 14px; font-size: 13px; line-height: 1.6; }
+  .insight-title { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+
+  .filter-bar { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip { padding: 6px 12px; font-size: 12px; border: 1px solid #e0ddd3; border-radius: 999px; background: #fff; color: #5f5e5a; cursor: pointer; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+  .filter-chip.active { background: #2c2c2a; color: #fff; border-color: #2c2c2a; }
+
+  .msg-success { font-size: 12px; color: #1d9e75; margin-top: 8px; }
+  .msg-error { font-size: 12px; color: #A32D2D; margin-top: 8px; }
+  .empty-hint { padding: 20px 14px; font-size: 12px; color: #888780; text-align: center; }
+  .help-text { font-size: 11px; color: #888780; margin-top: 8px; }
+  .section-title { font-size: 12px; font-weight: 600; color: #5f5e5a; margin: 16px 0 8px; padding-left: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.92); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-top: 1px solid rgba(0,0,0,0.08); display: flex; padding-bottom: env(safe-area-inset-bottom, 0); z-index: 100; }
+  .tab-item { flex: 1; padding: 8px 4px 6px; background: transparent; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: inherit; color: #8a8980; transition: color 0.15s; }
+  .tab-item.active { color: #0C447C; }
+  .tab-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+  .tab-icon svg { width: 22px; height: 22px; fill: currentColor; }
+  .tab-label { font-size: 10px; font-weight: 500; }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-row > * { flex: 1; min-width: 100px; }
+
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; display: none; align-items: flex-end; justify-content: center; animation: maskfade 0.15s; }
+  @keyframes maskfade { from { opacity: 0; } to { opacity: 1; } }
+  .modal-mask.show { display: flex; }
+  .modal { background: #fff; border-radius: 16px 16px 0 0; width: 100%; max-width: 430px; max-height: 70vh; overflow-y: auto; padding: 16px 16px calc(20px + env(safe-area-inset-bottom, 0)); animation: slideup 0.2s ease; }
+  @keyframes slideup { from { transform: translateY(100%); } to { transform: none; } }
+  .modal-handle { width: 36px; height: 4px; background: #d3d1c7; border-radius: 2px; margin: -6px auto 14px; }
+  .modal-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .modal-item { padding: 10px 0; border-bottom: 1px solid #f1efe8; font-size: 13px; }
+  .modal-item:last-child { border-bottom: none; }
+  .modal-close { width: 100%; padding: 11px; background: #f1efe8; color: #2c2c2a; border: none; border-radius: 10px; margin-top: 12px; font-family: inherit; font-size: 14px; cursor: pointer; }
+
+  @media (min-width: 480px) {
+    .container, .topbar { max-width: 430px; margin-left: auto; margin-right: auto; }
+    .tabbar { max-width: 430px; margin-left: auto; margin-right: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>健康追踪</h1>
+  <span class="date-mini" id="today-label"></span>
+</div>
+
+<div class="container">
+
+  <div class="panel active" id="panel-daily">
+    <div id="edit-banner-daily" class="edit-banner" style="display:none;">
+      <span>✏️ 编辑中：<span id="edit-banner-daily-date"></span></span>
+      <button id="cancel-edit-daily">取消</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📅 日期</div>
+      <input type="date" id="d-date" />
+    </div>
+
+    <div class="card">
+      <div class="card-title">😴 昨晚几点睡</div>
+      <div class="chip-group" id="d-sleep-chips"></div>
+      <input type="time" id="d-sleep-custom" style="display:none; margin-top:8px;" />
+    </div>
+
+    <div class="card">
+      <div class="card-title">💧 喝水</div>
+      <div class="water-tracker">
+        <div class="water-head">
+          <div class="water-total"><span id="water-total-val">0</span><span class="unit"> ml</span></div>
+          <div class="water-target">目标 1500 ml · 每杯 300 ml</div>
+        </div>
+        <div class="water-progress-text" id="water-progress-text"></div>
+        <div class="water-cups" id="water-cups"></div>
+        <div class="water-actions">
+          <button id="water-minus">− 减一杯</button>
+          <button id="water-plus">+ 加一杯</button>
+        </div>
+        <div class="water-hint">点杯子或按钮记录</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌶 饮食刺激</div>
+      <div class="chip-group" id="d-food"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🍽 外出就餐</div>
+      <div class="chip-group" id="d-eatout"></div>
+      <input type="text" id="d-eatout-detail" placeholder="吃了什么" style="margin-top:8px; display:none;" />
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏃 运动（选填）</div>
+      <input type="text" id="d-exercise" placeholder="如 跑步 30 分钟" />
+    </div>
+
+    <button class="btn-primary" id="save-daily">保存今天的记录</button>
+    <div id="msg-daily"></div>
+  </div>
+
+  <div class="panel" id="panel-symptom">
+    <div class="switch-bar">
+      <button class="switch-btn active" data-symtype="throat">🔥 喉咙发作</button>
+      <button class="switch-btn" data-symtype="illness">💊 其他病</button>
+    </div>
+
+    <div id="sym-throat">
+      <div id="edit-banner-throat" class="edit-banner" style="display:none;">
+        <span>✏️ 编辑中</span>
+        <button id="cancel-edit-throat">取消</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 日期</div>
+        <input type="date" id="t-date" />
+      </div>
+      <div class="card">
+        <div class="card-title">喉咙状态</div>
+        <div class="chip-group" id="t-state"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">喉咙位置</div>
+        <div class="chip-group" id="t-pos"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">淋巴结肿大按压痛</div>
+        <div class="chip-group" id="t-lymph"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">干预方式</div>
+        <div class="chip-group" id="t-treat"></div>
+        <div id="t-doctor-wrap" style="display:none; margin-top:10px;">
+          <div class="sub-options-label">就诊方式（可多选）</div>
+          <div class="chip-group" id="t-doctor"></div>
+        </div>
+        <div id="t-drug-sub" class="sub-options" style="display:none;">
+          <div class="sub-options-label">用药类型（可多选，联合用药就都选）</div>
+          <div class="chip-group" id="t-drug-type"></div>
+          <div class="sub-options-label" style="margin-top:10px;">药品清单</div>
+          <div class="drug-list" id="t-drug-list"></div>
+          <button type="button" class="drug-add" id="t-drug-add">+ 添加药品</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">备注</div>
+        <textarea id="t-note" placeholder="症状细节、伴随感受等"></textarea>
+      </div>
+      <button class="btn-primary" id="save-throat">保存喉咙记录</button>
+      <div id="msg-throat"></div>
+    </div>
+
+    <div id="sym-illness" style="display:none;">
+      <div id="edit-banner-illness" class="edit-banner" style="display:none;">
+        <span>✏️ 编辑中</span>
+        <button id="cancel-edit-illness">取消</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📅 日期</div>
+        <input type="date" id="i-date" />
+      </div>
+      <div class="card">
+        <div class="card-title">症状/病名</div>
+        <input type="text" id="i-name" placeholder="如 感冒、拉肚子" />
+      </div>
+      <div class="card">
+        <div class="card-title">严重程度</div>
+        <div class="chip-group" id="i-severity"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">干预方式</div>
+        <div class="chip-group" id="i-treat"></div>
+        <div id="i-doctor-wrap" style="display:none; margin-top:10px;">
+          <div class="sub-options-label">就诊方式（可多选）</div>
+          <div class="chip-group" id="i-doctor"></div>
+        </div>
+        <div id="i-drug-sub" class="sub-options" style="display:none;">
+          <div class="sub-options-label">用药类型（可多选）</div>
+          <div class="chip-group" id="i-drug-type"></div>
+          <div class="sub-options-label" style="margin-top:10px;">药品清单</div>
+          <div class="drug-list" id="i-drug-list"></div>
+          <button type="button" class="drug-add" id="i-drug-add">+ 添加药品</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">备注</div>
+        <textarea id="i-note" placeholder="症状细节、就诊情况等"></textarea>
+      </div>
+      <button class="btn-primary" id="save-illness">保存病症记录</button>
+      <div id="msg-illness"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-overview">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">下次经期预测</div><div class="stat-val" id="next-period">—</div></div>
+      <div class="stat-card"><div class="stat-label" id="cycle-day-label">当前经期</div><div class="stat-val" id="cycle-day">—</div></div>
+      <div class="stat-card"><div class="stat-label">最近喉咙发作</div><div class="stat-val" id="last-throat">—</div></div>
+      <div class="stat-card"><div class="stat-label">连续记录</div><div class="stat-val" id="streak">—</div></div>
+    </div>
+
+    <div class="card collapsible" id="timeline-card">
+      <div class="collapsible-head" data-toggle="timeline-card">
+        <div>
+          <div style="font-size:13px;font-weight:600;">时间轴</div>
+          <div style="font-size:11px;color:#888780;margin-top:2px;" id="timeline-summary">—</div>
+        </div>
+        <span class="arrow">▼</span>
+      </div>
+      <div class="collapsible-body">
+        <div class="legend">
+          <span class="legend-item"><span class="legend-mark period"></span>🩸 经期</span>
+          <span class="legend-item"><span class="legend-mark throat"></span>🔥 喉咙</span>
+          <span class="legend-item"><span class="legend-mark illness"></span>💊 其他病</span>
+        </div>
+        <div id="timeline"></div>
+        <div class="help-text">点击有标记的日期查看详情</div>
+      </div>
+    </div>
+
+    <div class="insight" style="margin-bottom:12px;">
+      <div class="insight-title">💡 观察</div>
+      <div id="insight-text">数据加载中…</div>
+    </div>
+
+    <div class="section-title">经期</div>
+    <div class="card">
+      <div class="card-title" id="period-form-title">+ 新增经期</div>
+      <div class="row2">
+        <div class="field"><label class="field-label">开始</label><input type="date" id="p-start" /></div>
+        <div class="field"><label class="field-label">结束</label><input type="date" id="p-end" /></div>
+      </div>
+      <button class="btn-primary" id="save-period">保存</button>
+      <button class="btn-cancel" id="cancel-edit-period" style="display:none;">取消编辑</button>
+      <div id="msg-period"></div>
+    </div>
+
+    <div class="card collapsible" id="period-history-card">
+      <div class="collapsible-head" data-toggle="period-history-card">
+        <div style="font-size:13px;font-weight:600;" id="period-history-title">历史经期</div>
+        <span class="arrow">▼</span>
+      </div>
+      <div id="period-preview"></div>
+      <div class="collapsible-body">
+        <div class="record-list" id="period-list"></div>
+      </div>
+    </div>
+
+    <div class="section-title">全部记录</div>
+    <div class="card collapsible" id="data-card">
+      <div class="collapsible-head" data-toggle="data-card">
+        <div style="font-size:13px;font-weight:600;" id="data-title">全部记录</div>
+        <span class="arrow">▼</span>
+      </div>
+      <div id="data-preview"></div>
+      <div class="collapsible-body">
+        <div class="filter-bar">
+          <button class="filter-chip active" data-data="all">全部</button>
+          <button class="filter-chip" data-data="daily">日常</button>
+          <button class="filter-chip" data-data="throat">喉咙</button>
+          <button class="filter-chip" data-data="illness">其他病</button>
+        </div>
+        <div class="record-list" id="data-list"></div>
+        <div class="help-text">点 ✏️ 修改，点 ✕ 删除</div>
+      </div>
+    </div>
+
+    <div class="section-title">数据管理</div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="export-btn">📥 导出备份</button>
+      <button class="btn-secondary" id="import-btn">📤 导入</button>
+      <input type="file" id="import-file" accept=".json" style="display:none;" />
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn-danger" id="reset-btn">🗑 清空所有数据</button>
+    </div>
+    <div class="help-text">数据存在浏览器本地。换设备或清缓存会丢，建议定期导出备份。</div>
+  </div>
+</div>
+
+<nav class="tabbar">
+  <button class="tab-item active" data-tab="daily">
+    <span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 3 2 5 4 6v3c0 1.1.9 2 2 2h2c1.1 0 2-.9 2-2v-3c2-1 4-3 4-6 0-4-3-7-7-7zm-1 18v-1h2v1h-2z"/></svg></span>
+    <span class="tab-label">日常</span>
+  </button>
+  <button class="tab-item" data-tab="symptom">
+    <span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M19.5 3.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5zM18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2z"/></svg></span>
+    <span class="tab-label">不适</span>
+  </button>
+  <button class="tab-item" data-tab="overview">
+    <span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg></span>
+    <span class="tab-label">概览</span>
+  </button>
+</nav>
+
+<div class="modal-mask" id="modal-mask">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">详情</div>
+    <div id="modal-body"></div>
+    <button class="modal-close" id="modal-close">关闭</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const KEYS = { period: 'ht.period', daily: 'ht.daily', throat: 'ht.throat', illness: 'ht.illness' };
+  function load(k){ try { return JSON.parse(localStorage.getItem(k)||'[]'); } catch(e){ return []; } }
+  function save(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+  let periods = load(KEYS.period);
+  let dailies = load(KEYS.daily);
+  let throats = load(KEYS.throat);
+  let illnesses = load(KEYS.illness);
+
+  function normalizeDrugs(rec){
+    if (Array.isArray(rec.drugs)) return rec.drugs;
+    if (rec.drug || rec.days){
+      return [{ name: rec.drug || '', days: rec.days || '' }];
+    }
+    return [];
+  }
+  throats.forEach(r => { r.drugs = normalizeDrugs(r); });
+  illnesses.forEach(r => { r.drugs = normalizeDrugs(r); });
+
+  const FOOD = ['无','辛辣','油炸烧烤','干硬'];
+  const EATOUT = ['否','是'];
+  const THROAT_STATE = ['无痛','有感觉','明显痛','化脓','结石'];
+  const POS = ['无','左','右','双侧'];
+  const TREAT_COMMON = ['无','作息调整','自行吃药','看医生'];
+  const DRUG_TYPE = ['中成药','抗生素','西药','其他'];
+  const SEVERITY = ['轻','中','重'];
+  const DOCTOR = ['吃药','输液','打针'];
+  const SLEEP_PRESETS = ['23:00','23:30','00:00','00:30','01:00'];
+
+  const CUP_ML = 300;
+  const WATER_TARGET = 1500;
+  const DEFAULT_CUPS = 6;
+  let waterCups = 0;
+  let editing = { type: null, idx: null };
+  let tDrugs = [];
+  let iDrugs = [];
+  let currentDataFilter = 'all';
+
+  function dateDiff(a, b){ return Math.floor((new Date(a) - new Date(b)) / 86400000); }
+  function fmtDate(d){ const x = new Date(d); return x.getFullYear() + '-' + (x.getMonth()+1).toString().padStart(2,'0') + '-' + x.getDate().toString().padStart(2,'0'); }
+  function fmtDateShort(d){ const x = new Date(d); return (x.getMonth()+1) + '月' + x.getDate() + '日'; }
+  function showMsg(id, text, isError){
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = isError ? 'msg-error' : 'msg-success';
+    setTimeout(() => { el.textContent = ''; el.className = ''; }, 2200);
+  }
+  function escapeHtml(s){
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  document.querySelectorAll('.collapsible-head').forEach(head => {
+    head.addEventListener('click', () => {
+      document.getElementById(head.dataset.toggle).classList.toggle('open');
+    });
+  });
+
+  // 睡眠
+  function buildSleepChips(){
+    const c = document.getElementById('d-sleep-chips');
+    c.innerHTML = '';
+    SLEEP_PRESETS.forEach(t => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = t; b.dataset.val = t;
+      b.addEventListener('click', () => {
+        const wasSelected = b.classList.contains('selected');
+        c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+        document.getElementById('d-sleep-custom').style.display = 'none';
+        document.getElementById('d-sleep-custom').value = '';
+        if (!wasSelected) b.classList.add('selected');
+      });
+      c.appendChild(b);
+    });
+    const custom = document.createElement('button');
+    custom.type = 'button'; custom.className = 'chip'; custom.textContent = '自定义'; custom.dataset.val = '__custom__';
+    custom.addEventListener('click', () => {
+      const wasSelected = custom.classList.contains('selected');
+      c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+      const inp = document.getElementById('d-sleep-custom');
+      if (wasSelected){
+        inp.style.display = 'none';
+        inp.value = '';
+      } else {
+        custom.classList.add('selected');
+        inp.style.display = 'block';
+        inp.focus();
+      }
+    });
+    c.appendChild(custom);
+  }
+  function getSleep(){
+    const c = document.getElementById('d-sleep-chips');
+    const sel = c.querySelector('.chip.selected');
+    if (!sel) return '';
+    if (sel.dataset.val === '__custom__') return document.getElementById('d-sleep-custom').value || '';
+    return sel.dataset.val;
+  }
+  function setSleep(val){
+    const c = document.getElementById('d-sleep-chips');
+    c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+    document.getElementById('d-sleep-custom').style.display = 'none';
+    document.getElementById('d-sleep-custom').value = '';
+    if (!val) return;
+    const match = c.querySelector('.chip[data-val="' + val + '"]');
+    if (match){ match.classList.add('selected'); }
+    else {
+      const custom = c.querySelector('.chip[data-val="__custom__"]');
+      custom.classList.add('selected');
+      const inp = document.getElementById('d-sleep-custom');
+      inp.style.display = 'block';
+      inp.value = val;
+    }
+  }
+
+  // chip
+  function buildChips(containerId, options, multi, onChange){
+    const c = document.getElementById(containerId);
+    c.innerHTML = '';
+    c.dataset.multi = multi ? '1' : '0';
+    options.forEach(opt => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = opt; b.dataset.val = opt;
+      b.addEventListener('click', () => {
+        if (multi){
+          if (opt === '无'){
+            c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+            b.classList.add('selected');
+          } else {
+            const noneBtn = c.querySelector('.chip[data-val="无"]');
+            if (noneBtn) noneBtn.classList.remove('selected');
+            b.classList.toggle('selected');
+          }
+        } else {
+          const wasSelected = b.classList.contains('selected');
+          c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+          if (!wasSelected) b.classList.add('selected');
+        }
+        if (onChange) onChange(getChip(containerId));
+      });
+      c.appendChild(b);
+    });
+  }
+  function getChip(containerId){
+    const c = document.getElementById(containerId);
+    const multi = c.dataset.multi === '1';
+    const sel = Array.from(c.querySelectorAll('.chip.selected')).map(x => x.dataset.val);
+    return multi ? sel : (sel[0] || '');
+  }
+  function setChip(containerId, val){
+    const c = document.getElementById(containerId);
+    c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+    if (!val) return;
+    if (Array.isArray(val)){
+      val.forEach(v => { const m = c.querySelector('.chip[data-val="' + v + '"]'); if (m) m.classList.add('selected'); });
+    } else {
+      const m = c.querySelector('.chip[data-val="' + val + '"]'); if (m) m.classList.add('selected');
+    }
+  }
+
+  function updateTDrugSub(){
+    const treat = getChip('t-treat');
+    const doctor = getChip('t-doctor');
+    const showDrug = (treat === '自行吃药') ||
+                     (treat === '看医生' && Array.isArray(doctor) && doctor.includes('吃药'));
+    document.getElementById('t-drug-sub').style.display = showDrug ? 'block' : 'none';
+  }
+  function updateIDrugSub(){
+    const treat = getChip('i-treat');
+    const doctor = getChip('i-doctor');
+    const showDrug = (treat === '自行吃药') ||
+                     (treat === '看医生' && Array.isArray(doctor) && doctor.includes('吃药'));
+    document.getElementById('i-drug-sub').style.display = showDrug ? 'block' : 'none';
+  }
+  function onTreatTChange(val){
+    document.getElementById('t-doctor-wrap').style.display = (val === '看医生') ? 'block' : 'none';
+    updateTDrugSub();
+  }
+  function onTreatIChange(val){
+    document.getElementById('i-doctor-wrap').style.display = (val === '看医生') ? 'block' : 'none';
+    updateIDrugSub();
+  }
+  function onEatoutChange(val){
+    document.getElementById('d-eatout-detail').style.display = (val === '是') ? 'block' : 'none';
+  }
+
+  // 药品列表
+  function renderDrugList(listId, drugs){
+    const c = document.getElementById(listId);
+    c.innerHTML = '';
+    drugs.forEach((d, i) => {
+      const row = document.createElement('div');
+      row.className = 'drug-row';
+      row.innerHTML =
+        '<input type="text" placeholder="药名" value="' + escapeHtml(d.name) + '" data-field="name" />' +
+        '<input type="text" placeholder="疗程（天）" value="' + escapeHtml(d.days) + '" data-field="days" />' +
+        '<button type="button" class="drug-del">✕</button>';
+      row.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', () => { drugs[i][inp.dataset.field] = inp.value; });
+      });
+      row.querySelector('.drug-del').addEventListener('click', () => {
+        drugs.splice(i, 1);
+        renderDrugList(listId, drugs);
+      });
+      c.appendChild(row);
+    });
+  }
+  document.getElementById('t-drug-add').addEventListener('click', () => { tDrugs.push({ name: '', days: '' }); renderDrugList('t-drug-list', tDrugs); });
+  document.getElementById('i-drug-add').addEventListener('click', () => { iDrugs.push({ name: '', days: '' }); renderDrugList('i-drug-list', iDrugs); });
+
+  // 水杯
+  function cupSvg(filled){
+    if (filled){
+      return '<svg viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg">' +
+        '<path d="M6 6 L8 40 Q8 42 10 42 L26 42 Q28 42 28 40 L30 6 Z" fill="#7AB8E8" stroke="#378ADD" stroke-width="1.5"/>' +
+        '<path d="M7 12 L29 12" stroke="#fff" stroke-width="1" opacity="0.5"/>' +
+        '<ellipse cx="13" cy="18" rx="2" ry="3" fill="#fff" opacity="0.4"/>' +
+        '</svg>';
+    }
+    return '<svg viewBox="0 0 36 44" xmlns="http://www.w3.org/2000/svg">' +
+      '<path d="M6 6 L8 40 Q8 42 10 42 L26 42 Q28 42 28 40 L30 6 Z" fill="#fff" stroke="#b8d4ea" stroke-width="1.5" stroke-dasharray="2 2"/>' +
+      '</svg>';
+  }
+  function renderCups(){
+    const c = document.getElementById('water-cups');
+    const slots = Math.max(DEFAULT_CUPS, waterCups + 1);
+    let html = '';
+    for (let i = 0; i < slots; i++){
+      html += '<div class="cup" data-idx="' + i + '">' + cupSvg(i < waterCups) + '</div>';
+    }
+    c.innerHTML = html;
+    const total = waterCups * CUP_ML;
+    document.getElementById('water-total-val').textContent = total;
+    const pct = Math.round(total / WATER_TARGET * 100);
+    const pt = document.getElementById('water-progress-text');
+    if (total >= WATER_TARGET){
+      pt.textContent = '✓ 达成目标（' + pct + '%）';
+      pt.style.color = '#1d9e75';
+    } else {
+      pt.textContent = pct + '% · 还差 ' + (WATER_TARGET - total) + ' ml';
+      pt.style.color = '#5f7da5';
+    }
+    c.querySelectorAll('.cup').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.idx);
+        if (idx >= waterCups) waterCups = idx + 1;
+        else if (idx === waterCups - 1) waterCups = idx;
+        else waterCups = idx + 1;
+        renderCups();
+      });
+    });
+  }
+  document.getElementById('water-plus').addEventListener('click', () => { waterCups++; renderCups(); });
+  document.getElementById('water-minus').addEventListener('click', () => { if (waterCups > 0) waterCups--; renderCups(); });
+
+  // Tab
+  document.querySelectorAll('.tab-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-item').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (btn.dataset.tab === 'overview'){
+        renderDashboard();
+        renderPeriodList();
+        renderDataList(currentDataFilter);
+      }
+    });
+  });
+
+  document.querySelectorAll('.switch-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.switch-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const t = btn.dataset.symtype;
+      document.getElementById('sym-throat').style.display = t === 'throat' ? 'block' : 'none';
+      document.getElementById('sym-illness').style.display = t === 'illness' ? 'block' : 'none';
+    });
+  });
+
+  // 清空
+  function clearDailyForm(){
+    document.getElementById('d-date').value = fmtDate(new Date());
+    setSleep('');
+    waterCups = 0; renderCups();
+    setChip('d-food', '');
+    setChip('d-eatout', '');
+    document.getElementById('d-eatout-detail').value = '';
+    document.getElementById('d-eatout-detail').style.display = 'none';
+    document.getElementById('d-exercise').value = '';
+  }
+  function clearThroatForm(){
+    document.getElementById('t-date').value = fmtDate(new Date());
+    setChip('t-state', ''); setChip('t-pos', ''); setChip('t-lymph', '');
+    setChip('t-treat', '');
+    setChip('t-doctor', []);
+    document.getElementById('t-doctor-wrap').style.display = 'none';
+    setChip('t-drug-type', []);
+    document.getElementById('t-drug-sub').style.display = 'none';
+    tDrugs = []; renderDrugList('t-drug-list', tDrugs);
+    document.getElementById('t-note').value = '';
+  }
+  function clearIllnessForm(){
+    document.getElementById('i-date').value = fmtDate(new Date());
+    document.getElementById('i-name').value = '';
+    setChip('i-severity', ''); setChip('i-treat', ''); setChip('i-doctor', []);
+    document.getElementById('i-doctor-wrap').style.display = 'none';
+    setChip('i-drug-type', []);
+    document.getElementById('i-drug-sub').style.display = 'none';
+    iDrugs = []; renderDrugList('i-drug-list', iDrugs);
+    document.getElementById('i-note').value = '';
+  }
+  function clearPeriodForm(){
+    document.getElementById('p-start').value = '';
+    document.getElementById('p-end').value = '';
+    document.getElementById('period-form-title').textContent = '+ 新增经期';
+    document.getElementById('cancel-edit-period').style.display = 'none';
+    if (editing.type === 'period') editing = { type: null, idx: null };
+  }
+
+  // 编辑
+  function enterEditDaily(idx){
+    const d = dailies[idx];
+    document.getElementById('d-date').value = d.date;
+    setSleep(d.sleep || '');
+    waterCups = d.waterCups != null ? d.waterCups : Math.round((d.water||0) / CUP_ML);
+    renderCups();
+    setChip('d-food', d.food || []);
+    setChip('d-eatout', d.eatout || '');
+    if (d.eatout === '是'){
+      document.getElementById('d-eatout-detail').style.display = 'block';
+      document.getElementById('d-eatout-detail').value = d.eatoutDetail || '';
+    }
+    document.getElementById('d-exercise').value = d.exercise || '';
+    editing = { type: 'daily', idx };
+    document.getElementById('edit-banner-daily').style.display = 'flex';
+    document.getElementById('edit-banner-daily-date').textContent = d.date;
+    document.querySelector('.tab-item[data-tab="daily"]').click();
+  }
+  function enterEditThroat(idx){
+    const d = throats[idx];
+    document.getElementById('t-date').value = d.date;
+    setChip('t-state', d.state || '');
+    setChip('t-pos', d.pos || '');
+    setChip('t-lymph', d.lymph || '');
+    // 兼容旧 treat 值
+    let treat = d.treat || '';
+    if (treat === '中成药' || treat === '抗生素') treat = '自行吃药';
+    if (treat === '作息忌口') treat = '作息调整';
+    setChip('t-treat', treat);
+    onTreatTChange(treat);
+    setChip('t-doctor', Array.isArray(d.doctor) ? d.doctor : (d.doctor ? [d.doctor] : []));
+    updateTDrugSub();
+    setChip('t-drug-type', d.drugTypes || (['中成药','抗生素'].includes(d.treat) ? [d.treat] : []));
+    tDrugs = JSON.parse(JSON.stringify(d.drugs || []));
+    renderDrugList('t-drug-list', tDrugs);
+    document.getElementById('t-note').value = d.note || '';
+    editing = { type: 'throat', idx };
+    document.getElementById('edit-banner-throat').style.display = 'flex';
+    document.querySelector('.tab-item[data-tab="symptom"]').click();
+    document.querySelector('.switch-btn[data-symtype="throat"]').click();
+  }
+  function enterEditIllness(idx){
+    const d = illnesses[idx];
+    document.getElementById('i-date').value = d.date;
+    document.getElementById('i-name').value = d.name || '';
+    setChip('i-severity', d.severity || '');
+    let treat = d.treat || '';
+    if (treat === '作息调整' || treat === '自行吃药' || treat === '看医生' || treat === '无') {} else { treat = ''; }
+    setChip('i-treat', treat);
+    onTreatIChange(treat);
+    setChip('i-doctor', Array.isArray(d.doctor) ? d.doctor : (d.doctor ? [d.doctor] : []));
+    updateIDrugSub();
+    setChip('i-drug-type', d.drugTypes || []);
+    iDrugs = JSON.parse(JSON.stringify(d.drugs || []));
+    renderDrugList('i-drug-list', iDrugs);
+    document.getElementById('i-note').value = d.note || '';
+    editing = { type: 'illness', idx };
+    document.getElementById('edit-banner-illness').style.display = 'flex';
+    document.querySelector('.tab-item[data-tab="symptom"]').click();
+    document.querySelector('.switch-btn[data-symtype="illness"]').click();
+  }
+  function enterEditPeriod(idx){
+    const p = periods[idx];
+    document.getElementById('p-start').value = p.start;
+    document.getElementById('p-end').value = p.end;
+    document.getElementById('period-form-title').textContent = '✏️ 编辑经期';
+    document.getElementById('cancel-edit-period').style.display = 'block';
+    editing = { type: 'period', idx };
+    setTimeout(() => {
+      document.getElementById('p-start').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
+  }
+  document.getElementById('cancel-edit-daily').addEventListener('click', () => {
+    editing = { type: null, idx: null };
+    document.getElementById('edit-banner-daily').style.display = 'none';
+    clearDailyForm();
+  });
+  document.getElementById('cancel-edit-throat').addEventListener('click', () => {
+    editing = { type: null, idx: null };
+    document.getElementById('edit-banner-throat').style.display = 'none';
+    clearThroatForm();
+  });
+  document.getElementById('cancel-edit-illness').addEventListener('click', () => {
+    editing = { type: null, idx: null };
+    document.getElementById('edit-banner-illness').style.display = 'none';
+    clearIllnessForm();
+  });
+  document.getElementById('cancel-edit-period').addEventListener('click', clearPeriodForm);
+
+  // 保存
+  document.getElementById('save-daily').addEventListener('click', () => {
+    const date = document.getElementById('d-date').value;
+    if (!date){ showMsg('msg-daily', '请填日期', true); return; }
+    const rec = {
+      date, sleep: getSleep(),
+      water: waterCups * CUP_ML, waterCups: waterCups,
+      food: getChip('d-food'),
+      eatout: getChip('d-eatout'),
+      eatoutDetail: document.getElementById('d-eatout-detail').value,
+      exercise: document.getElementById('d-exercise').value,
+      ts: Date.now()
+    };
+    if (editing.type === 'daily'){
+      dailies[editing.idx] = rec;
+      editing = { type: null, idx: null };
+      document.getElementById('edit-banner-daily').style.display = 'none';
+    } else {
+      dailies = dailies.filter(d => d.date !== date);
+      dailies.push(rec);
+    }
+    save(KEYS.daily, dailies);
+    showMsg('msg-daily', '✓ 已保存 ' + date);
+  });
+
+  document.getElementById('save-throat').addEventListener('click', () => {
+    const date = document.getElementById('t-date').value;
+    if (!date){ showMsg('msg-throat', '请填日期', true); return; }
+    const drugs = tDrugs.filter(d => d.name || d.days);
+    const treat = getChip('t-treat');
+    const rec = {
+      date,
+      state: getChip('t-state'),
+      pos: getChip('t-pos'),
+      lymph: getChip('t-lymph'),
+      treat,
+      doctor: (treat === '看医生') ? getChip('t-doctor') : [],
+      drugTypes: (treat === '自行吃药' || treat === '看医生') ? getChip('t-drug-type') : [],
+      drugs,
+      note: document.getElementById('t-note').value,
+      ts: Date.now()
+    };
+    if (editing.type === 'throat'){
+      throats[editing.idx] = rec;
+      editing = { type: null, idx: null };
+      document.getElementById('edit-banner-throat').style.display = 'none';
+    } else {
+      throats.push(rec);
+    }
+    save(KEYS.throat, throats);
+    showMsg('msg-throat', '✓ 已保存 ' + date);
+  });
+
+  document.getElementById('save-illness').addEventListener('click', () => {
+    const date = document.getElementById('i-date').value;
+    if (!date){ showMsg('msg-illness', '请填日期', true); return; }
+    const drugs = iDrugs.filter(d => d.name || d.days);
+    const treat = getChip('i-treat');
+    const rec = {
+      date,
+      name: document.getElementById('i-name').value,
+      severity: getChip('i-severity'),
+      treat,
+      doctor: (treat === '看医生') ? getChip('i-doctor') : [],
+      drugTypes: (treat === '自行吃药' || treat === '看医生') ? getChip('i-drug-type') : [],
+      drugs,
+      note: document.getElementById('i-note').value,
+      ts: Date.now()
+    };
+    if (editing.type === 'illness'){
+      illnesses[editing.idx] = rec;
+      editing = { type: null, idx: null };
+      document.getElementById('edit-banner-illness').style.display = 'none';
+    } else {
+      illnesses.push(rec);
+    }
+    save(KEYS.illness, illnesses);
+    showMsg('msg-illness', '✓ 已保存 ' + date);
+  });
+
+  document.getElementById('save-period').addEventListener('click', () => {
+    const s = document.getElementById('p-start').value;
+    const e = document.getElementById('p-end').value;
+    if (!s || !e){ showMsg('msg-period', '请填完整', true); return; }
+    if (editing.type === 'period'){
+      periods[editing.idx] = { start: s, end: e, ts: Date.now() };
+      editing = { type: null, idx: null };
+    } else {
+      periods.push({ start: s, end: e, ts: Date.now() });
+    }
+    save(KEYS.period, periods);
+    showMsg('msg-period', '✓ 已保存');
+    clearPeriodForm();
+    renderPeriodList();
+    renderDashboard();
+  });
+
+  function renderPeriodList(){
+    const c = document.getElementById('period-list');
+    const preview = document.getElementById('period-preview');
+    const sorted = [...periods].sort((a,b) => new Date(b.start) - new Date(a.start));
+    document.getElementById('period-history-title').textContent = '历史经期 · ' + sorted.length + ' 条';
+
+    if (sorted.length === 0){
+      preview.innerHTML = '<div class="empty-hint">还没有经期记录</div>';
+      c.innerHTML = '';
+      return;
+    }
+    const latest = sorted[0];
+    const latestDays = dateDiff(latest.end, latest.start) + 1;
+    preview.innerHTML = '<div class="preview-row"><span class="preview-label">最近：</span>' +
+      latest.start + ' → ' + latest.end + '（' + latestDays + ' 天）</div>';
+
+    c.innerHTML = sorted.map(p => {
+      const days = dateDiff(p.end, p.start) + 1;
+      const idx = periods.indexOf(p);
+      return '<div class="record-row">' +
+        '<div class="record-content"><div class="record-date">' + p.start + ' → ' + p.end + '</div>' +
+        '<div class="record-body"><span class="badge b-period">🩸 经期</span>' + days + ' 天</div></div>' +
+        '<div class="record-actions">' +
+        '<button class="icon-btn edit" onclick="window._editPeriod(' + idx + ')">✏️</button>' +
+        '<button class="icon-btn" onclick="window._delPeriod(' + idx + ')">✕</button>' +
+        '</div></div>';
+    }).join('');
+  }
+  window._delPeriod = function(idx){
+    if (!confirm('删除这条经期记录？')) return;
+    periods.splice(idx, 1);
+    save(KEYS.period, periods);
+    renderPeriodList();
+    renderDashboard();
+  };
+  window._editPeriod = function(idx){ enterEditPeriod(idx); };
+
+  function avgCycle(){
+    if (periods.length < 2) return 30;
+    const sorted = [...periods].sort((a,b) => new Date(a.start) - new Date(b.start));
+    const gaps = [];
+    for (let i = 1; i < sorted.length; i++) gaps.push(dateDiff(sorted[i].start, sorted[i-1].start));
+    return Math.round(gaps.reduce((a,b)=>a+b,0) / gaps.length);
+  }
+  function nextPeriod(){
+    if (periods.length === 0) return null;
+    const last = [...periods].sort((a,b) => new Date(b.start) - new Date(a.start))[0];
+    const next = new Date(last.start);
+    next.setDate(next.getDate() + avgCycle());
+    return next;
+  }
+  function cycleDay(date){
+    if (periods.length === 0) return null;
+    const target = new Date(date);
+    const past = periods.filter(p => new Date(p.start) <= target).sort((a,b) => new Date(b.start) - new Date(a.start));
+    if (past.length === 0) return null;
+    return dateDiff(target, past[0].start) + 1;
+  }
+  function computeStreak(){
+    if (dailies.length === 0) return 0;
+    const dates = new Set(dailies.map(d => d.date));
+    let streak = 0;
+    let cur = new Date();
+    while (dates.has(fmtDate(cur))){ streak++; cur.setDate(cur.getDate() - 1); }
+    return streak;
+  }
+
+  function renderDashboard(){
+    const np = nextPeriod();
+    document.getElementById('next-period').textContent = np ? fmtDateShort(np) : '—';
+    // 当前经期 / 距下次经期
+    const cdLabel = document.getElementById('cycle-day-label');
+    const cdVal = document.getElementById('cycle-day');
+    const today = new Date();
+    const todayStr = fmtDate(today);
+    const inPeriod = periods.find(p => p.start <= todayStr && todayStr <= p.end);
+    if (inPeriod){
+      const day = dateDiff(today, inPeriod.start) + 1;
+      const total = dateDiff(inPeriod.end, inPeriod.start) + 1;
+      cdLabel.textContent = '当前经期';
+      cdVal.textContent = '第 ' + day + '/' + total + ' 天';
+    } else if (np){
+      const diff = dateDiff(np, today);
+      cdLabel.textContent = '距下次经期';
+      if (diff > 0) cdVal.textContent = diff + ' 天';
+      else if (diff === 0) cdVal.textContent = '今天';
+      else cdVal.textContent = '已迟 ' + (-diff) + ' 天';
+    } else {
+      cdLabel.textContent = '当前经期';
+      cdVal.textContent = '—';
+    }
+    if (throats.length === 0){
+      document.getElementById('last-throat').textContent = '—';
+    } else {
+      const sorted = [...throats].sort((a,b) => new Date(b.date) - new Date(a.date));
+      const days = dateDiff(new Date(), sorted[0].date);
+      document.getElementById('last-throat').textContent = days === 0 ? '今天' : days + ' 天前';
+    }
+    document.getElementById('streak').textContent = computeStreak() + ' 天';
+    renderTimeline();
+    renderInsight();
+  }
+
+  function getDayEvents(){
+    const dayEvents = {};
+    function add(date, type, label, refType, refIdx){
+      if (!dayEvents[date]) dayEvents[date] = { types: new Set(), items: [] };
+      dayEvents[date].types.add(type);
+      dayEvents[date].items.push({ type, label, refType, refIdx });
+    }
+    periods.forEach((p, i) => {
+      const start = new Date(p.start), end = new Date(p.end);
+      const total = dateDiff(p.end, p.start) + 1;
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+        const day = dateDiff(d, start) + 1;
+        add(fmtDate(d), 'period', '经期 第 ' + day + '/' + total + ' 天', 'period', i);
+      }
+    });
+    throats.forEach((t, i) => {
+      if (t.state === '无痛') return;
+      add(t.date, 'throat', '喉咙：' + (t.state || '') + (t.treat && t.treat !== '无' ? ' · ' + t.treat : ''), 'throat', i);
+    });
+    illnesses.forEach((il, i) => {
+      add(il.date, 'illness', '其他病：' + (il.name || '未填'), 'illness', i);
+    });
+    return dayEvents;
+  }
+
+  function renderTimeline(){
+    const c = document.getElementById('timeline');
+    const dayEvents = getDayEvents();
+    const keys = Object.keys(dayEvents);
+
+    const summary = document.getElementById('timeline-summary');
+    if (keys.length === 0){
+      summary.textContent = '还没有数据';
+      c.innerHTML = '<div class="empty-hint">还没有数据，开始记录吧</div>';
+      return;
+    }
+    const periodDays = keys.filter(k => dayEvents[k].types.has('period')).length;
+    const throatDays = keys.filter(k => dayEvents[k].types.has('throat')).length;
+    const illnessDays = keys.filter(k => dayEvents[k].types.has('illness')).length;
+    summary.textContent = '🩸 ' + periodDays + ' 天 · 🔥 ' + throatDays + ' 次 · 💊 ' + illnessDays + ' 次';
+
+    const allDates = keys.map(d => new Date(d));
+    const minD = new Date(Math.min(...allDates));
+    const maxD = new Date(Math.max(new Date(), ...allDates));
+
+    const monthMap = {};
+    for (let d = new Date(minD); d <= maxD; d.setDate(d.getDate()+1)){
+      const key = d.getFullYear() + '-' + (d.getMonth()+1).toString().padStart(2,'0');
+      if (!monthMap[key]) monthMap[key] = [];
+      monthMap[key].push(fmtDate(d));
+    }
+
+    let html = '';
+    Object.entries(monthMap).forEach(([month, days]) => {
+      html += '<div class="timeline-month">';
+      html += '<div class="timeline-month-label">' + month + '</div>';
+      html += '<div class="timeline-row">';
+      days.forEach(d => {
+        const ev = dayEvents[d];
+        let markHtml = '', multi = '';
+        if (ev && ev.types.size > 0){
+          let primary = null;
+          if (ev.types.has('throat')) primary = 'throat';
+          else if (ev.types.has('illness')) primary = 'illness';
+          else if (ev.types.has('period')) primary = 'period';
+          markHtml = '<span class="day-mark mark-' + primary + '"></span>';
+          if (ev.types.size > 1) multi = ' multi';
+        }
+        html += '<div class="day-cell' + multi + '" data-date="' + d + '"><span class="day-bg"></span>' + markHtml + '</div>';
+      });
+      html += '</div></div>';
+    });
+    c.innerHTML = html;
+
+    c.querySelectorAll('.day-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        const date = cell.dataset.date;
+        const ev = dayEvents[date];
+        if (!ev || ev.items.length === 0) return;
+        openDayModal(date, ev.items);
+      });
+    });
+  }
+
+  function openDayModal(date, items){
+    document.getElementById('modal-title').textContent = date + ' · ' + items.length + ' 条';
+    const body = document.getElementById('modal-body');
+    body.innerHTML = items.map(it => {
+      let badge = '';
+      if (it.type === 'period') badge = '<span class="badge b-period">🩸 经期</span>';
+      else if (it.type === 'throat') badge = '<span class="badge b-throat">🔥 喉咙</span>';
+      else if (it.type === 'illness') badge = '<span class="badge b-illness">💊 其他病</span>';
+      return '<div class="modal-item">' + badge + escapeHtml(it.label) + '<br>' +
+        '<button class="btn-secondary" style="margin-top:6px;font-size:12px;padding:4px 10px;" onclick="window._jumpToRecord(\'' + it.refType + '\',' + it.refIdx + ')">查看完整记录</button>' +
+        '</div>';
+    }).join('');
+    document.getElementById('modal-mask').classList.add('show');
+  }
+  window._jumpToRecord = function(refType, refIdx){
+    closeModal();
+    if (refType === 'period'){
+      document.getElementById('period-history-card').classList.add('open');
+      setTimeout(() => { document.getElementById('period-list').scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+    } else {
+      document.getElementById('data-card').classList.add('open');
+      document.querySelectorAll('.filter-chip').forEach(b => { b.classList.toggle('active', b.dataset.data === refType); });
+      currentDataFilter = refType;
+      renderDataList(currentDataFilter);
+      setTimeout(() => { document.getElementById('data-list').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
+    }
+  };
+  function closeModal(){ document.getElementById('modal-mask').classList.remove('show'); }
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-mask').addEventListener('click', (e) => { if (e.target.id === 'modal-mask') closeModal(); });
+
+  function renderInsight(){
+    const box = document.getElementById('insight-text');
+    if (throats.length < 2 || periods.length < 2){
+      box.textContent = '继续记录，数据多了就能看到规律。';
+      return;
+    }
+    const throatEvents = throats.filter(t => t.state !== '无痛');
+    let inPerinatal = 0;
+    throatEvents.forEach(t => {
+      const tDate = new Date(t.date);
+      const closest = periods.map(p => Math.abs(dateDiff(tDate, new Date(p.start)))).sort((a,b)=>a-b)[0];
+      if (closest <= 5) inPerinatal++;
+    });
+    const pct = throatEvents.length ? Math.round(inPerinatal / throatEvents.length * 100) : 0;
+    let txt = '记录的 ' + throatEvents.length + ' 次喉咙发作中，' + inPerinatal + ' 次（' + pct + '%）发生在经期前后 5 天内。';
+    const abxCount = throatEvents.filter(t => (t.drugTypes && t.drugTypes.includes('抗生素')) || t.treat === '抗生素').length;
+    if (abxCount) txt += '其中 ' + abxCount + ' 次用了抗生素。';
+    box.textContent = txt;
+  }
+
+  document.querySelectorAll('.filter-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentDataFilter = btn.dataset.data;
+      renderDataList(currentDataFilter);
+    });
+  });
+
+  function buildRecordBody(it){
+    const d = it.data;
+    let body = '', badge = '';
+    if (it.type === 'daily'){
+      badge = '<span class="badge b-habit">日常</span>';
+      const parts = [];
+      if (d.sleep) parts.push('睡 ' + d.sleep);
+      if (d.water) parts.push('水 ' + d.water + 'ml');
+      if (Array.isArray(d.food) && d.food.length && !(d.food.length===1 && d.food[0]==='无')) parts.push(d.food.join('/'));
+      if (d.eatout === '是') parts.push('外食' + (d.eatoutDetail ? '：'+escapeHtml(d.eatoutDetail) : ''));
+      if (d.exercise) parts.push(escapeHtml(d.exercise));
+      body = parts.join('，') || '（空）';
+    } else if (it.type === 'throat'){
+      badge = '<span class="badge b-throat">🔥 喉咙</span>';
+      const parts = [];
+      if (d.state) parts.push(d.state);
+      if (d.pos && d.pos !== '无') parts.push(d.pos);
+      if (d.lymph && d.lymph !== '无') parts.push('淋巴' + d.lymph);
+      if (d.treat && d.treat !== '无') parts.push(d.treat);
+      if (d.doctor){
+        const docStr = Array.isArray(d.doctor) ? d.doctor.join('+') : d.doctor;
+        if (docStr) parts.push(docStr);
+      }
+      if (d.drugTypes && d.drugTypes.length){
+        parts.push(d.drugTypes.join('+'));
+        if (d.drugTypes.includes('抗生素')) badge += '<span class="badge b-abx">抗生素</span>';
+      } else if (d.treat === '抗生素' || d.treat === '中成药'){
+        // 旧数据
+        parts.push(d.treat);
+        if (d.treat === '抗生素') badge += '<span class="badge b-abx">抗生素</span>';
+      }
+      if (d.drugs && d.drugs.length){
+        const drugStrs = d.drugs.map(x => x.name + (x.days ? '('+x.days+'天)' : '')).filter(s => s.trim());
+        if (drugStrs.length) parts.push(drugStrs.join('、'));
+      }
+      body = parts.map(p => typeof p === 'string' ? escapeHtml(p) : p).join('，');
+    } else {
+      badge = '<span class="badge b-illness">💊 其他病</span>';
+      const parts = [];
+      if (d.name) parts.push(escapeHtml(d.name));
+      if (d.severity) parts.push(d.severity);
+      if (d.treat && d.treat !== '无') parts.push(d.treat);
+      if (d.doctor){
+        const docStr = Array.isArray(d.doctor) ? d.doctor.join('+') : d.doctor;
+        if (docStr) parts.push(docStr);
+      }
+      if (d.drugTypes && d.drugTypes.length) parts.push(d.drugTypes.join('+'));
+      if (d.drugs && d.drugs.length){
+        const drugStrs = d.drugs.map(x => x.name + (x.days ? '('+x.days+'天)' : '')).filter(s => s.trim());
+        if (drugStrs.length) parts.push(drugStrs.join('、'));
+      }
+      body = parts.join('，');
+    }
+    if (d.note) body += ' · ' + escapeHtml(d.note);
+    return { body, badge };
+  }
+
+  function renderDataList(filter){
+    const c = document.getElementById('data-list');
+    const preview = document.getElementById('data-preview');
+    const items = [];
+    if (filter === 'all' || filter === 'daily') dailies.forEach((d,i) => items.push({type:'daily', date: d.date, data: d, idx: i}));
+    if (filter === 'all' || filter === 'throat') throats.forEach((d,i) => items.push({type:'throat', date: d.date, data: d, idx: i}));
+    if (filter === 'all' || filter === 'illness') illnesses.forEach((d,i) => items.push({type:'illness', date: d.date, data: d, idx: i}));
+    items.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+    document.getElementById('data-title').textContent = '全部记录 · ' + items.length + ' 条';
+
+    if (items.length === 0){
+      preview.innerHTML = '';
+      c.innerHTML = '<div class="empty-hint">无数据</div>';
+      return;
+    }
+    const top = items[0];
+    const tb = buildRecordBody(top);
+    preview.innerHTML = '<div class="preview-row"><span class="preview-label">最近：</span>' +
+      '<span style="font-size:11px;color:#888780;">' + top.date + '</span> ' + tb.badge + tb.body + '</div>';
+
+    c.innerHTML = items.map(it => {
+      const { body, badge } = buildRecordBody(it);
+      return '<div class="record-row">' +
+        '<div class="record-content"><div class="record-date">' + it.date + '</div>' +
+        '<div class="record-body">' + badge + body + '</div></div>' +
+        '<div class="record-actions">' +
+        '<button class="icon-btn edit" onclick="window._editRec(\'' + it.type + '\',' + it.idx + ')">✏️</button>' +
+        '<button class="icon-btn" onclick="window._delRec(\'' + it.type + '\',' + it.idx + ')">✕</button>' +
+        '</div></div>';
+    }).join('');
+  }
+  window._delRec = function(type, idx){
+    if (!confirm('删除这条记录？')) return;
+    if (type === 'daily'){ dailies.splice(idx,1); save(KEYS.daily, dailies); }
+    if (type === 'throat'){ throats.splice(idx,1); save(KEYS.throat, throats); }
+    if (type === 'illness'){ illnesses.splice(idx,1); save(KEYS.illness, illnesses); }
+    renderDataList(currentDataFilter);
+    renderDashboard();
+  };
+  window._editRec = function(type, idx){
+    if (type === 'daily') enterEditDaily(idx);
+    else if (type === 'throat') enterEditThroat(idx);
+    else if (type === 'illness') enterEditIllness(idx);
+  };
+
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const data = { periods, dailies, throats, illnesses, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'health-tracker-' + fmtDate(new Date()) + '.json';
+    a.click(); URL.revokeObjectURL(url);
+  });
+  document.getElementById('import-btn').addEventListener('click', () => { document.getElementById('import-file').click(); });
+  document.getElementById('import-file').addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        if (!confirm('导入会覆盖当前所有数据，确定？')) return;
+        periods = d.periods || []; dailies = d.dailies || []; throats = d.throats || []; illnesses = d.illnesses || [];
+        throats.forEach(r => { r.drugs = normalizeDrugs(r); });
+        illnesses.forEach(r => { r.drugs = normalizeDrugs(r); });
+        save(KEYS.period, periods); save(KEYS.daily, dailies); save(KEYS.throat, throats); save(KEYS.illness, illnesses);
+        renderDashboard(); renderPeriodList(); renderDataList('all'); alert('导入成功');
+      } catch(err){ alert('导入失败：文件格式不对'); }
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    if (!confirm('确定清空所有数据？无法撤销。建议先导出备份。')) return;
+    periods = []; dailies = []; throats = []; illnesses = [];
+    save(KEYS.period, periods); save(KEYS.daily, dailies); save(KEYS.throat, throats); save(KEYS.illness, illnesses);
+    renderDashboard(); renderPeriodList(); renderDataList('all');
+  });
+
+  function init(){
+    buildSleepChips();
+    buildChips('d-food', FOOD, true);
+    buildChips('d-eatout', EATOUT, false, onEatoutChange);
+    buildChips('t-state', THROAT_STATE, false);
+    buildChips('t-pos', POS, false);
+    buildChips('t-lymph', POS, false);
+    buildChips('t-treat', TREAT_COMMON, false, onTreatTChange);
+    buildChips('t-doctor', DOCTOR, true, updateTDrugSub);
+    buildChips('t-drug-type', DRUG_TYPE, true);
+    buildChips('i-severity', SEVERITY, false);
+    buildChips('i-treat', TREAT_COMMON, false, onTreatIChange);
+    buildChips('i-doctor', DOCTOR, true, updateIDrugSub);
+    buildChips('i-drug-type', DRUG_TYPE, true);
+
+    const today = fmtDate(new Date());
+    document.getElementById('d-date').value = today;
+    document.getElementById('t-date').value = today;
+    document.getElementById('i-date').value = today;
+
+    const now = new Date();
+    const wk = ['日','一','二','三','四','五','六'];
+    document.getElementById('today-label').textContent =
+      (now.getMonth()+1) + '月' + now.getDate() + '日 周' + wk[now.getDay()];
+
+    if (periods.length === 0 && throats.length === 0){
+      periods = [
+        { start: '2025-12-13', end: '2025-12-19', ts: Date.now() },
+        { start: '2026-01-13', end: '2026-01-17', ts: Date.now() },
+        { start: '2026-02-15', end: '2026-02-21', ts: Date.now() },
+        { start: '2026-03-18', end: '2026-03-23', ts: Date.now() },
+        { start: '2026-04-14', end: '2026-04-18', ts: Date.now() },
+        { start: '2026-05-15', end: '2026-05-20', ts: Date.now() }
+      ];
+      throats = [
+        { date: '2026-01-15', state: '化脓', pos: '右', lymph: '无', treat: '看医生', drugTypes: ['抗生素'], drugs: [{name:'（忘记）', days:'9'}], note: '1月中旬，第一次扁桃体化脓', ts: Date.now() },
+        { date: '2026-02-15', state: '化脓', pos: '无', lymph: '无', treat: '看医生', drugTypes: ['抗生素'], drugs: [{name:'抗生素+输液', days:'5'}], note: '位置忘记', ts: Date.now() },
+        { date: '2026-03-15', state: '明显痛', pos: '无', lymph: '无', treat: '看医生', drugTypes: ['抗生素','中成药'], drugs: [{name:'可乐必妥', days:'4'},{name:'蒲地蓝消炎片', days:'4'}], note: '抗生素+中成药', ts: Date.now() },
+        { date: '2026-04-15', state: '明显痛', pos: '无', lymph: '无', treat: '自行吃药', drugTypes: ['中成药'], drugs: [{name:'（忘记）', days:'2'}], note: '', ts: Date.now() },
+        { date: '2026-05-15', state: '明显痛', pos: '无', lymph: '无', treat: '无', drugTypes: [], drugs: [], note: '自愈', ts: Date.now() }
+      ];
+      save(KEYS.period, periods);
+      save(KEYS.throat, throats);
+    }
+
+    renderCups();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
