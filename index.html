@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>健康追踪表</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #faf9f7;
+    color: #2c2c2a;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 4rem;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0 0 1rem;
+  }
+  .tab-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 8px 14px;
+    font-size: 14px;
+    border: 1px solid #d3d1c7;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #5f5e5a;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { background: #f1efe8; }
+  .tab-btn.active {
+    background: #fff;
+    color: #2c2c2a;
+    font-weight: 500;
+    border-color: #b4b2a9;
+  }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .field { margin-bottom: 14px; }
+  .field-label {
+    display: block;
+    font-size: 13px;
+    color: #5f5e5a;
+    margin-bottom: 6px;
+  }
+  .chip-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 6px 12px;
+    font-size: 13px;
+    border: 1px solid #d3d1c7;
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    color: #2c2c2a;
+    font-family: inherit;
+  }
+  .chip:hover { background: #f1efe8; }
+  .chip.selected {
+    background: #E6F1FB;
+    color: #0C447C;
+    border-color: #378ADD;
+  }
+  textarea, input[type=text], input[type=number], input[type=date], select {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #d3d1c7;
+    border-radius: 8px;
+    background: #fff;
+    color: #2c2c2a;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #378ADD;
+  }
+  .row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  @media (max-width: 480px) {
+    .row2 { grid-template-columns: 1fr; }
+  }
+  .save-btn {
+    padding: 9px 18px;
+    font-size: 14px;
+    background: #1d9e75;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: inherit;
+  }
+  .save-btn:hover { background: #0f6e56; }
+  .danger-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: transparent;
+    color: #A32D2D;
+    border: 1px solid #d3d1c7;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .danger-btn:hover { background: #FCEBEB; }
+  .icon-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    background: transparent;
+    border: 1px solid #d3d1c7;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #5f5e5a;
+    font-family: inherit;
+  }
+  .icon-btn:hover { background: #f1efe8; }
+  .panel-card {
+    background: #fff;
+    border: 1px solid #e8e6df;
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: #fff;
+    border: 1px solid #e8e6df;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .stat-label {
+    font-size: 12px;
+    color: #5f5e5a;
+  }
+  .stat-val {
+    font-size: 20px;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+  .record-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e8e6df;
+    font-size: 13px;
+    gap: 12px;
+  }
+  .record-row:last-child { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 6px;
+    margin-right: 4px;
+    font-weight: 500;
+  }
+  .b-throat { background: #FAECE7; color: #712B13; }
+  .b-illness { background: #FAEEDA; color: #633806; }
+  .b-habit { background: #E6F1FB; color: #0C447C; }
+  .b-period { background: #FBEAF0; color: #72243E; }
+  .b-abx { background: #FCEBEB; color: #791F1F; }
+  .legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-right: 4px;
+  }
+  .msg-success {
+    font-size: 12px;
+    color: #1d9e75;
+    margin-top: 8px;
+  }
+  .msg-error {
+    font-size: 12px;
+    color: #A32D2D;
+    margin-top: 8px;
+  }
+  .timeline-wrap {
+    background: #fff;
+    border: 1px solid #e8e6df;
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 1rem;
+  }
+  .data-list {
+    background: #fff;
+    border: 1px solid #e8e6df;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .insight-box {
+    background: #fff;
+    border: 1px solid #e8e6df;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .insight-box .title {
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  .footer-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .help-text {
+    font-size: 12px;
+    color: #888780;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>健康追踪表</h1>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="dashboard">概览</button>
+    <button class="tab-btn" data-tab="daily">每日习惯</button>
+    <button class="tab-btn" data-tab="throat">喉咙</button>
+    <button class="tab-btn" data-tab="illness">其他病</button>
+    <button class="tab-btn" data-tab="period">经期</button>
+    <button class="tab-btn" data-tab="data">数据</button>
+  </div>
+
+  <!-- 概览 -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">下次经期预测</div><div class="stat-val" id="next-period">—</div></div>
+      <div class="stat-card"><div class="stat-label">当前周期第几天</div><div class="stat-val" id="cycle-day">—</div></div>
+      <div class="stat-card"><div class="stat-label">最近喉咙发作</div><div class="stat-val" id="last-throat">—</div></div>
+      <div class="stat-card"><div class="stat-label">连续记录天数</div><div class="stat-val" id="streak">—</div></div>
+    </div>
+
+    <div class="timeline-wrap">
+      <div style="font-size: 14px; font-weight: 500; margin-bottom: 8px;">时间轴</div>
+      <div style="font-size: 12px; color: #5f5e5a; margin-bottom: 10px;">
+        <span class="legend-dot" style="background:#D4537E"></span>经期
+        <span class="legend-dot" style="background:#D85A30; margin-left: 10px;"></span>喉咙
+        <span class="legend-dot" style="background:#EF9F27; margin-left: 10px;"></span>其他病
+      </div>
+      <div id="timeline"></div>
+    </div>
+
+    <div class="insight-box">
+      <div class="title">💡 观察</div>
+      <div id="insight-text">数据加载中…</div>
+    </div>
+  </div>
+
+  <!-- 每日习惯 -->
+  <div class="panel" id="panel-daily">
+    <div class="panel-card">
+      <div style="font-size: 15px; font-weight: 500; margin-bottom: 14px;">记录今天</div>
+      <div class="field">
+        <label class="field-label">日期</label>
+        <input type="date" id="d-date" />
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label class="field-label">昨晚几点睡</label>
+          <select id="d-sleep">
+            <option value="">未填</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">喝水（毫升）</label>
+          <input type="number" id="d-water" placeholder="如 1500" />
+        </div>
+      </div>
+      <div class="field">
+        <label class="field-label">饮食刺激（多选）</label>
+        <div class="chip-group" id="d-food"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">外出就餐</label>
+        <div class="chip-group" id="d-eatout"></div>
+        <input type="text" id="d-eatout-detail" placeholder="吃了什么（外食时填）" style="margin-top:6px; display:none;" />
+      </div>
+      <div class="field">
+        <label class="field-label">运动（选填）</label>
+        <input type="text" id="d-exercise" placeholder="如 跑步 30 分钟" />
+      </div>
+      <div class="field">
+        <label class="field-label">备注</label>
+        <textarea id="d-note"></textarea>
+      </div>
+      <button class="save-btn" id="save-daily">保存</button>
+      <div id="msg-daily"></div>
+    </div>
+  </div>
+
+  <!-- 喉咙 -->
+  <div class="panel" id="panel-throat">
+    <div class="panel-card">
+      <div style="font-size: 15px; font-weight: 500; margin-bottom: 14px;">记录喉咙发作</div>
+      <div class="field"><label class="field-label">日期</label><input type="date" id="t-date" /></div>
+      <div class="field">
+        <label class="field-label">喉咙状态</label>
+        <div class="chip-group" id="t-state"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">喉咙位置</label>
+        <div class="chip-group" id="t-pos"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">淋巴结肿大按压痛</label>
+        <div class="chip-group" id="t-lymph"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">干预方式</label>
+        <div class="chip-group" id="t-treat"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label class="field-label">药名</label><input type="text" id="t-drug" placeholder="如 可乐必妥+蒲地蓝" /></div>
+        <div class="field"><label class="field-label">疗程天数</label><input type="number" id="t-days" placeholder="如 5" /></div>
+      </div>
+      <div class="field"><label class="field-label">备注</label><textarea id="t-note"></textarea></div>
+      <button class="save-btn" id="save-throat">保存</button>
+      <div id="msg-throat"></div>
+    </div>
+  </div>
+
+  <!-- 其他病 -->
+  <div class="panel" id="panel-illness">
+    <div class="panel-card">
+      <div style="font-size: 15px; font-weight: 500; margin-bottom: 14px;">记录其他病症</div>
+      <div class="field"><label class="field-label">日期</label><input type="date" id="i-date" /></div>
+      <div class="field"><label class="field-label">症状/病名</label><input type="text" id="i-name" placeholder="如 感冒、拉肚子" /></div>
+      <div class="field">
+        <label class="field-label">严重程度</label>
+        <div class="chip-group" id="i-severity"></div>
+      </div>
+      <div class="field">
+        <label class="field-label">干预方式</label>
+        <div class="chip-group" id="i-treat"></div>
+      </div>
+      <div class="field" id="i-doctor-wrap" style="display:none;">
+        <label class="field-label">就诊方式</label>
+        <div class="chip-group" id="i-doctor"></div>
+      </div>
+      <div class="field"><label class="field-label">药名</label><input type="text" id="i-drug" /></div>
+      <div class="field"><label class="field-label">备注</label><textarea id="i-note"></textarea></div>
+      <button class="save-btn" id="save-illness">保存</button>
+      <div id="msg-illness"></div>
+    </div>
+  </div>
+
+  <!-- 经期 -->
+  <div class="panel" id="panel-period">
+    <div class="panel-card">
+      <div style="font-size: 15px; font-weight: 500; margin-bottom: 14px;">添加新一次经期</div>
+      <div class="row2">
+        <div class="field"><label class="field-label">开始日期</label><input type="date" id="p-start" /></div>
+        <div class="field"><label class="field-label">结束日期</label><input type="date" id="p-end" /></div>
+      </div>
+      <button class="save-btn" id="save-period">保存</button>
+      <div id="msg-period"></div>
+    </div>
+    <div style="font-size: 14px; font-weight: 500; margin: 1rem 0 8px;">历史经期</div>
+    <div id="period-list" class="data-list"></div>
+  </div>
+
+  <!-- 数据查看 -->
+  <div class="panel" id="panel-data">
+    <div class="tab-bar" style="margin-bottom: 12px;">
+      <button class="tab-btn active" data-data="all">全部</button>
+      <button class="tab-btn" data-data="daily">每日习惯</button>
+      <button class="tab-btn" data-data="throat">喉咙</button>
+      <button class="tab-btn" data-data="illness">其他病</button>
+    </div>
+    <div id="data-list" class="data-list"></div>
+    <div class="help-text">点击右侧 ✕ 删除单条记录</div>
+
+    <div class="footer-actions">
+      <button class="save-btn" id="export-btn">📥 导出 JSON 备份</button>
+      <button class="icon-btn" id="import-btn">📤 导入 JSON</button>
+      <input type="file" id="import-file" accept=".json" style="display:none;" />
+      <button class="danger-btn" id="reset-btn">🗑️ 清空所有数据</button>
+    </div>
+    <div class="help-text">数据存在你浏览器里，建议定期导出备份。换电脑/清浏览器缓存会丢。</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ========== 存储（localStorage） ==========
+  const KEYS = { period: 'ht.period', daily: 'ht.daily', throat: 'ht.throat', illness: 'ht.illness' };
+  function load(k){ try { return JSON.parse(localStorage.getItem(k)||'[]'); } catch(e){ return []; } }
+  function save(k, v){ localStorage.setItem(k, JSON.stringify(v)); }
+
+  let periods = load(KEYS.period);
+  let dailies = load(KEYS.daily);
+  let throats = load(KEYS.throat);
+  let illnesses = load(KEYS.illness);
+
+  // ========== 字段选项 ==========
+  const FOOD = ['无','辛辣','油炸烧烤','干硬'];
+  const EATOUT = ['否','是'];
+  const THROAT_STATE = ['无痛','有感觉','明显痛','化脓','结石'];
+  const POS = ['无','左','右','双侧'];
+  const TREAT_T = ['无','作息忌口','中成药','抗生素'];
+  const SEVERITY = ['轻','中','重'];
+  const TREAT_I = ['无','作息调整','自行吃药','看医生'];
+  const DOCTOR = ['吃药','输液','打针'];
+
+  // 睡觉时间档（半小时档）
+  function genSleepOptions(){
+    const sel = document.getElementById('d-sleep');
+    for (let h = 21; h <= 26; h++){
+      for (let m of [0, 30]){
+        const hour = h % 24;
+        const hh = hour.toString().padStart(2,'0');
+        const mm = m.toString().padStart(2,'0');
+        const label = (h >= 24 ? '次日 ' : '') + hh + ':' + mm;
+        const opt = document.createElement('option');
+        opt.value = hh+':'+mm;
+        opt.textContent = label;
+        sel.appendChild(opt);
+      }
+    }
+  }
+
+  // ========== chip 组件 ==========
+  function buildChips(containerId, options, multi){
+    const c = document.getElementById(containerId);
+    c.innerHTML = '';
+    c.dataset.multi = multi ? '1' : '0';
+    options.forEach(opt => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = opt;
+      b.dataset.val = opt;
+      b.addEventListener('click', () => {
+        if (multi){
+          if (opt === '无'){
+            c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+            b.classList.add('selected');
+          } else {
+            const noneBtn = c.querySelector('.chip[data-val="无"]');
+            if (noneBtn) noneBtn.classList.remove('selected');
+            b.classList.toggle('selected');
+          }
+        } else {
+          c.querySelectorAll('.chip').forEach(x => x.classList.remove('selected'));
+          b.classList.add('selected');
+        }
+        if (containerId === 'd-eatout'){
+          document.getElementById('d-eatout-detail').style.display = (opt === '是' ? 'block' : 'none');
+        }
+        if (containerId === 'i-treat'){
+          document.getElementById('i-doctor-wrap').style.display = (opt === '看医生' ? 'block' : 'none');
+        }
+      });
+      c.appendChild(b);
+    });
+  }
+  function getChip(containerId){
+    const c = document.getElementById(containerId);
+    const multi = c.dataset.multi === '1';
+    const sel = Array.from(c.querySelectorAll('.chip.selected')).map(x => x.dataset.val);
+    return multi ? sel : (sel[0] || '');
+  }
+
+  // ========== 标签切换 ==========
+  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'dashboard') renderDashboard();
+      if (btn.dataset.tab === 'data') renderDataList('all');
+      if (btn.dataset.tab === 'period') renderPeriodList();
+    });
+  });
+
+  // ========== 工具函数 ==========
+  function dateDiff(a, b){ return Math.floor((new Date(a) - new Date(b)) / 86400000); }
+  function fmtDate(d){
+    const x = new Date(d);
+    return x.getFullYear() + '-' + (x.getMonth()+1).toString().padStart(2,'0') + '-' + x.getDate().toString().padStart(2,'0');
+  }
+  function avgCycle(){
+    if (periods.length < 2) return 30;
+    const sorted = [...periods].sort((a,b) => new Date(a.start) - new Date(b.start));
+    const gaps = [];
+    for (let i = 1; i < sorted.length; i++){
+      gaps.push(dateDiff(sorted[i].start, sorted[i-1].start));
+    }
+    return Math.round(gaps.reduce((a,b)=>a+b,0) / gaps.length);
+  }
+  function nextPeriod(){
+    if (periods.length === 0) return null;
+    const last = [...periods].sort((a,b) => new Date(b.start) - new Date(a.start))[0];
+    const next = new Date(last.start);
+    next.setDate(next.getDate() + avgCycle());
+    return next;
+  }
+  function cycleDay(date){
+    if (periods.length === 0) return null;
+    const target = new Date(date);
+    const past = periods.filter(p => new Date(p.start) <= target).sort((a,b) => new Date(b.start) - new Date(a.start));
+    if (past.length === 0) return null;
+    return dateDiff(target, past[0].start) + 1;
+  }
+  function showMsg(id, text, isError){
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = isError ? 'msg-error' : 'msg-success';
+    setTimeout(() => { el.textContent = ''; }, 2500);
+  }
+
+  // ========== 概览 ==========
+  function renderDashboard(){
+    const np = nextPeriod();
+    document.getElementById('next-period').textContent = np ? fmtDate(np) : '需要经期数据';
+    const cd = cycleDay(new Date());
+    document.getElementById('cycle-day').textContent = cd ? '第 ' + cd + ' 天' : '—';
+    if (throats.length === 0){
+      document.getElementById('last-throat').textContent = '—';
+    } else {
+      const sorted = [...throats].sort((a,b) => new Date(b.date) - new Date(a.date));
+      const days = dateDiff(new Date(), sorted[0].date);
+      document.getElementById('last-throat').textContent = days === 0 ? '今天' : days + ' 天前';
+    }
+    document.getElementById('streak').textContent = computeStreak() + ' 天';
+    renderTimeline();
+    renderInsight();
+  }
+  function computeStreak(){
+    if (dailies.length === 0) return 0;
+    const dates = new Set(dailies.map(d => d.date));
+    let streak = 0;
+    let cur = new Date();
+    while (dates.has(fmtDate(cur))){
+      streak++;
+      cur.setDate(cur.getDate() - 1);
+    }
+    return streak;
+  }
+  function renderTimeline(){
+    const c = document.getElementById('timeline');
+    const events = [];
+    periods.forEach(p => {
+      const start = new Date(p.start), end = new Date(p.end);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)){
+        events.push({ date: fmtDate(d), type: 'period' });
+      }
+    });
+    throats.forEach(t => { if (t.state !== '无痛') events.push({ date: t.date, type: 'throat', label: t.state }); });
+    illnesses.forEach(i => events.push({ date: i.date, type: 'illness', label: i.name }));
+
+    if (events.length === 0){
+      c.innerHTML = '<div style="font-size:12px;color:#5f5e5a;text-align:center;padding:1rem;">还没有数据，开始记录吧</div>';
+      return;
+    }
+    const allDates = events.map(e => new Date(e.date));
+    const minD = new Date(Math.min(...allDates));
+    const maxD = new Date(Math.max(new Date(), ...allDates));
+
+    const monthMap = {};
+    for (let d = new Date(minD); d <= maxD; d.setDate(d.getDate()+1)){
+      const key = d.getFullYear() + '-' + (d.getMonth()+1).toString().padStart(2,'0');
+      if (!monthMap[key]) monthMap[key] = [];
+      monthMap[key].push(fmtDate(d));
+    }
+
+    let html = '';
+    Object.entries(monthMap).forEach(([month, days]) => {
+      html += '<div style="margin-bottom: 12px;">';
+      html += '<div style="font-size:11px;color:#5f5e5a;margin-bottom:4px;">' + month + '</div>';
+      html += '<div style="display:flex;gap:2px;flex-wrap:wrap;">';
+      days.forEach(d => {
+        const evs = events.filter(e => e.date === d);
+        let bg = '#e8e6df', title = d;
+        if (evs.length){
+          const types = evs.map(e => e.type);
+          if (types.includes('throat') && types.includes('period')){
+            bg = 'linear-gradient(135deg, #D4537E 50%, #D85A30 50%)';
+          } else if (types.includes('throat')) bg = '#D85A30';
+          else if (types.includes('illness')) bg = '#EF9F27';
+          else if (types.includes('period')) bg = '#D4537E';
+          title = d + '\n' + evs.map(e => e.type + (e.label ? ': '+e.label : '')).join('\n');
+        }
+        const day = parseInt(d.slice(8));
+        html += '<div title="' + title + '" style="width:16px;height:16px;border-radius:3px;background:' + bg + ';position:relative;font-size:9px;color:#fff;text-align:center;line-height:16px;">' + (day === 1 ? '1' : '') + '</div>';
+      });
+      html += '</div></div>';
+    });
+    c.innerHTML = html;
+  }
+  function renderInsight(){
+    const box = document.getElementById('insight-text');
+    if (throats.length < 2 || periods.length < 2){
+      box.textContent = '继续记录，等数据多一点就能看到规律。';
+      return;
+    }
+    const throatEvents = throats.filter(t => t.state !== '无痛');
+    let inPerinatal = 0;
+    throatEvents.forEach(t => {
+      const tDate = new Date(t.date);
+      const closest = periods.map(p => Math.abs(dateDiff(tDate, new Date(p.start)))).sort((a,b)=>a-b)[0];
+      if (closest <= 5) inPerinatal++;
+    });
+    const pct = throatEvents.length ? Math.round(inPerinatal / throatEvents.length * 100) : 0;
+    let txt = '记录的 ' + throatEvents.length + ' 次喉咙发作中，' + inPerinatal + ' 次（' + pct + '%）发生在经期前后 5 天内。';
+    const abx = throatEvents.filter(t => t.treat === '抗生素').length;
+    if (abx) txt += '其中 ' + abx + ' 次用了抗生素。';
+    box.textContent = txt;
+  }
+
+  // ========== 录入：每日 ==========
+  document.getElementById('save-daily').addEventListener('click', () => {
+    const date = document.getElementById('d-date').value;
+    if (!date){ showMsg('msg-daily', '请填日期', true); return; }
+    const rec = {
+      date,
+      sleep: document.getElementById('d-sleep').value,
+      water: document.getElementById('d-water').value,
+      food: getChip('d-food'),
+      eatout: getChip('d-eatout'),
+      eatoutDetail: document.getElementById('d-eatout-detail').value,
+      exercise: document.getElementById('d-exercise').value,
+      note: document.getElementById('d-note').value,
+      ts: Date.now()
+    };
+    dailies = dailies.filter(d => d.date !== date);
+    dailies.push(rec);
+    save(KEYS.daily, dailies);
+    showMsg('msg-daily', '已保存 ' + date);
+  });
+
+  // ========== 录入：喉咙 ==========
+  document.getElementById('save-throat').addEventListener('click', () => {
+    const date = document.getElementById('t-date').value;
+    if (!date){ showMsg('msg-throat', '请填日期', true); return; }
+    const rec = {
+      date,
+      state: getChip('t-state'),
+      pos: getChip('t-pos'),
+      lymph: getChip('t-lymph'),
+      treat: getChip('t-treat'),
+      drug: document.getElementById('t-drug').value,
+      days: document.getElementById('t-days').value,
+      note: document.getElementById('t-note').value,
+      ts: Date.now()
+    };
+    throats.push(rec);
+    save(KEYS.throat, throats);
+    showMsg('msg-throat', '已保存 ' + date);
+  });
+
+  // ========== 录入：其他病 ==========
+  document.getElementById('save-illness').addEventListener('click', () => {
+    const date = document.getElementById('i-date').value;
+    if (!date){ showMsg('msg-illness', '请填日期', true); return; }
+    const rec = {
+      date,
+      name: document.getElementById('i-name').value,
+      severity: getChip('i-severity'),
+      treat: getChip('i-treat'),
+      doctor: getChip('i-doctor'),
+      drug: document.getElementById('i-drug').value,
+      note: document.getElementById('i-note').value,
+      ts: Date.now()
+    };
+    illnesses.push(rec);
+    save(KEYS.illness, illnesses);
+    showMsg('msg-illness', '已保存 ' + date);
+  });
+
+  // ========== 经期 ==========
+  document.getElementById('save-period').addEventListener('click', () => {
+    const s = document.getElementById('p-start').value;
+    const e = document.getElementById('p-end').value;
+    if (!s || !e){ showMsg('msg-period', '请填完整', true); return; }
+    periods.push({ start: s, end: e, ts: Date.now() });
+    save(KEYS.period, periods);
+    showMsg('msg-period', '已保存');
+    renderPeriodList();
+  });
+  function renderPeriodList(){
+    const c = document.getElementById('period-list');
+    const sorted = [...periods].sort((a,b) => new Date(b.start) - new Date(a.start));
+    if (sorted.length === 0){
+      c.innerHTML = '<div style="padding:14px;font-size:12px;color:#5f5e5a;">还没有经期记录</div>';
+      return;
+    }
+    c.innerHTML = sorted.map(p => {
+      const days = dateDiff(p.end, p.start) + 1;
+      const idx = periods.indexOf(p);
+      return '<div class="record-row"><div>' + p.start + ' → ' + p.end + ' <span style="color:#5f5e5a;">（' + days + ' 天）</span></div>' +
+        '<button class="icon-btn" onclick="window._delPeriod(' + idx + ')">✕</button></div>';
+    }).join('');
+  }
+  window._delPeriod = function(idx){
+    if (!confirm('删除这条经期记录？')) return;
+    periods.splice(idx, 1);
+    save(KEYS.period, periods);
+    renderPeriodList();
+  };
+
+  // ========== 数据查看 ==========
+  document.querySelectorAll('.tab-btn[data-data]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn[data-data]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderDataList(btn.dataset.data);
+    });
+  });
+  function renderDataList(filter){
+    const c = document.getElementById('data-list');
+    const items = [];
+    if (filter === 'all' || filter === 'daily') dailies.forEach((d,i) => items.push({type:'daily', date: d.date, data: d, idx: i}));
+    if (filter === 'all' || filter === 'throat') throats.forEach((d,i) => items.push({type:'throat', date: d.date, data: d, idx: i}));
+    if (filter === 'all' || filter === 'illness') illnesses.forEach((d,i) => items.push({type:'illness', date: d.date, data: d, idx: i}));
+    items.sort((a,b) => new Date(b.date) - new Date(a.date));
+    if (items.length === 0){
+      c.innerHTML = '<div style="padding:14px;font-size:12px;color:#5f5e5a;">无数据</div>';
+      return;
+    }
+    c.innerHTML = items.map(it => {
+      const d = it.data;
+      let body = '', badge = '';
+      if (it.type === 'daily'){
+        badge = '<span class="badge b-habit">习惯</span>';
+        const parts = [];
+        if (d.sleep) parts.push('睡 ' + d.sleep);
+        if (d.water) parts.push('水 ' + d.water + 'ml');
+        if (Array.isArray(d.food) && d.food.length && !(d.food.length===1 && d.food[0]==='无')) parts.push('食 ' + d.food.join('/'));
+        if (d.eatout === '是') parts.push('外食' + (d.eatoutDetail ? '：'+d.eatoutDetail : ''));
+        if (d.exercise) parts.push('运动 ' + d.exercise);
+        body = parts.join('，') || '（空）';
+      } else if (it.type === 'throat'){
+        badge = '<span class="badge b-throat">喉咙</span>';
+        const parts = [];
+        if (d.state) parts.push(d.state);
+        if (d.pos && d.pos !== '无') parts.push(d.pos);
+        if (d.lymph && d.lymph !== '无') parts.push('淋巴' + d.lymph);
+        if (d.treat && d.treat !== '无'){
+          let t = d.treat;
+          if (d.drug) t += '：' + d.drug;
+          if (d.days) t += '（' + d.days + '天）';
+          parts.push(t);
+          if (d.treat === '抗生素') badge += '<span class="badge b-abx">抗生素</span>';
+        }
+        body = parts.join('，');
+      } else {
+        badge = '<span class="badge b-illness">其他病</span>';
+        const parts = [];
+        if (d.name) parts.push(d.name);
+        if (d.severity) parts.push(d.severity);
+        if (d.treat && d.treat !== '无'){
+          let t = d.treat;
+          if (d.doctor) t += '/' + d.doctor;
+          if (d.drug) t += '：' + d.drug;
+          parts.push(t);
+        }
+        body = parts.join('，');
+      }
+      if (d.note) body += ' · ' + d.note;
+      return '<div class="record-row"><div>' + badge + ' <span style="color:#5f5e5a;font-size:12px;">' + it.date + '</span><div style="margin-top:4px;">' + body + '</div></div>' +
+        '<button class="icon-btn" onclick="window._delRec(\'' + it.type + '\',' + it.idx + ')">✕</button></div>';
+    }).join('');
+  }
+  window._delRec = function(type, idx){
+    if (!confirm('删除这条记录？')) return;
+    if (type === 'daily'){ dailies.splice(idx,1); save(KEYS.daily, dailies); }
+    if (type === 'throat'){ throats.splice(idx,1); save(KEYS.throat, throats); }
+    if (type === 'illness'){ illnesses.splice(idx,1); save(KEYS.illness, illnesses); }
+    renderDataList('all');
+  };
+
+  // ========== 导入/导出/重置 ==========
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const data = { periods, dailies, throats, illnesses, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'health-tracker-' + fmtDate(new Date()) + '.json';
+    a.click(); URL.revokeObjectURL(url);
+  });
+  document.getElementById('import-btn').addEventListener('click', () => {
+    document.getElementById('import-file').click();
+  });
+  document.getElementById('import-file').addEventListener('change', (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        if (!confirm('导入会覆盖当前所有数据，确定？')) return;
+        periods = d.periods || []; dailies = d.dailies || []; throats = d.throats || []; illnesses = d.illnesses || [];
+        save(KEYS.period, periods); save(KEYS.daily, dailies); save(KEYS.throat, throats); save(KEYS.illness, illnesses);
+        renderDataList('all'); alert('导入成功');
+      } catch(err){ alert('导入失败：文件格式不对'); }
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    if (!confirm('确定清空所有数据？无法撤销。建议先导出备份。')) return;
+    periods = []; dailies = []; throats = []; illnesses = [];
+    save(KEYS.period, periods); save(KEYS.daily, dailies); save(KEYS.throat, throats); save(KEYS.illness, illnesses);
+    renderDashboard(); renderPeriodList(); renderDataList('all');
+  });
+
+  // ========== 初始化 ==========
+  function init(){
+    genSleepOptions();
+    buildChips('d-food', FOOD, true);
+    buildChips('d-eatout', EATOUT, false);
+    buildChips('t-state', THROAT_STATE, false);
+    buildChips('t-pos', POS, false);
+    buildChips('t-lymph', POS, false);
+    buildChips('t-treat', TREAT_T, false);
+    buildChips('i-severity', SEVERITY, false);
+    buildChips('i-treat', TREAT_I, false);
+    buildChips('i-doctor', DOCTOR, false);
+
+    const today = fmtDate(new Date());
+    document.getElementById('d-date').value = today;
+    document.getElementById('t-date').value = today;
+    document.getElementById('i-date').value = today;
+
+    // 首次加载预填历史数据
+    if (periods.length === 0 && throats.length === 0){
+      periods = [
+        { start: '2025-12-13', end: '2025-12-19', ts: Date.now() },
+        { start: '2026-01-13', end: '2026-01-17', ts: Date.now() },
+        { start: '2026-02-15', end: '2026-02-21', ts: Date.now() },
+        { start: '2026-03-18', end: '2026-03-23', ts: Date.now() },
+        { start: '2026-04-14', end: '2026-04-18', ts: Date.now() },
+        { start: '2026-05-15', end: '2026-05-20', ts: Date.now() }
+      ];
+      throats = [
+        { date: '2026-01-15', state: '化脓', pos: '右', lymph: '无', treat: '抗生素', drug: '（忘记）', days: '9', note: '1月中旬，第一次扁桃体化脓', ts: Date.now() },
+        { date: '2026-02-15', state: '化脓', pos: '无', lymph: '无', treat: '抗生素', drug: '抗生素+输液', days: '5', note: '位置忘记', ts: Date.now() },
+        { date: '2026-03-15', state: '明显痛', pos: '无', lymph: '无', treat: '抗生素', drug: '可乐必妥+蒲地蓝消炎片', days: '4', note: '抗生素+中成药', ts: Date.now() },
+        { date: '2026-04-15', state: '明显痛', pos: '无', lymph: '无', treat: '中成药', drug: '（忘记）', days: '2', note: '', ts: Date.now() },
+        { date: '2026-05-15', state: '明显痛', pos: '无', lymph: '无', treat: '无', drug: '', days: '', note: '自愈', ts: Date.now() }
+      ];
+      save(KEYS.period, periods);
+      save(KEYS.throat, throats);
+    }
+
+    renderDashboard();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
